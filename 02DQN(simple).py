@@ -26,24 +26,24 @@ class DQNAgent:
         self.state_size = (120, 128, 4)
         self.action_size = action_size
         # DQN 하이퍼파라미터
-        self.epsilon = 1.
-        self.epsilon_start, self.epsilon_end = 1.0, 0.1
-        self.exploration_steps = 1000.
-        self.epsilon_decay_step = (self.epsilon_start - self.epsilon_end) / self.exploration_steps
-        self.batch_size = 32
-        self.train_start = 50
-        self.update_target_rate = 100
+        self.epsilon = 0.05
+        # self.epsilon_start, self.epsilon_end = 1.0, 0.1
+        # self.exploration_steps = 1000.
+        # self.epsilon_decay_step = (self.epsilon_start - self.epsilon_end) / self.exploration_steps
+        # self.batch_size = 32
+        # self.train_start = 50
+        # self.update_target_rate = 100
         self.discount_factor = 0.95
-        # 리플레이 메모리, 최대 크기 400000
-        self.memory = deque(maxlen=100000)
+        # # 리플레이 메모리, 최대 크기 400000
+        # self.memory = deque(maxlen=100000)
         # self.no_op_steps = 30
         # 모델과 타겟모델을 생성하고 타겟모델 초기화
         self.model = self.build_model()
         self.target_model = self.build_model()
-        self.update_target_model()
+        # self.update_target_model()
         self.no_op_steps = 30
 
-        self.optimizer = self.optimizer()
+        # self.optimizer = self.optimizer()
         self.avg_q_max, self.avg_loss = 0, 0
 
         # # 텐서보드 설정
@@ -62,26 +62,26 @@ class DQNAgent:
         #     self.memory = load("./memory.joblib")
         #     print("memory load!")
 
-    # Huber Loss를 이용하기 위해 최적화 함수를 직접 정의
-    def optimizer(self):
-        a = K.placeholder(shape=(None,), dtype='int32')
-        y = K.placeholder(shape=(None,), dtype='float32')
-
-        prediction = self.model.output
-
-        a_one_hot = K.one_hot(a, self.action_size)
-        q_value = K.sum(prediction * a_one_hot, axis=1)
-        error = K.abs(y - q_value)
-
-        quadratic_part = K.clip(error, 0.0, 1.0)
-        linear_part = error - quadratic_part
-        loss = K.mean(0.5 * K.square(quadratic_part) + linear_part)
-
-        optimizer = Adam()
-        updates = optimizer.get_updates(self.model.trainable_weights, [], loss)
-        train = K.function([self.model.input, a, y], [loss], updates=updates)
-
-        return train
+    # # Huber Loss를 이용하기 위해 최적화 함수를 직접 정의
+    # def optimizer(self):
+    #     a = K.placeholder(shape=(None,), dtype='int32')
+    #     y = K.placeholder(shape=(None,), dtype='float32')
+    #
+    #     prediction = self.model.output
+    #
+    #     a_one_hot = K.one_hot(a, self.action_size)
+    #     q_value = K.sum(prediction * a_one_hot, axis=1)
+    #     error = K.abs(y - q_value)
+    #
+    #     quadratic_part = K.clip(error, 0.0, 1.0)
+    #     linear_part = error - quadratic_part
+    #     loss = K.mean(0.5 * K.square(quadratic_part) + linear_part)
+    #
+    #     optimizer = Adam()
+    #     updates = optimizer.get_updates(self.model.trainable_weights, [], loss)
+    #     train = K.function([self.model.input, a, y], [loss], updates=updates)
+    #
+    #     return train
 
     # 상태가 입력, 큐함수가 출력인 인공신경망 생성
     def build_model(self):
@@ -95,72 +95,18 @@ class DQNAgent:
         model.summary()
         return model
 
-    # 타겟 모델을 모델의 가중치로 업데이트
-    def update_target_model(self):
-        self.target_model.set_weights(self.model.get_weights())
+    # # 타겟 모델을 모델의 가중치로 업데이트
+    # def update_target_model(self):
+    #     self.target_model.set_weights(self.model.get_weights())
 
     # 입실론 탐욕 정책으로 행동 선택
     def get_action(self, history):
         history = np.float32(history / 255.0)
         if np.random.rand() <= self.epsilon:
-            print("epsilon!------------------------------------")
-            return random.randrange(self.action_size)
+            return random.randrange(self.action_size), True
         else:
             q_value = self.model.predict(history)
-            print("------------------------------------greedy!")
-            return np.argmax(q_value[0])
-
-    # 샘플 <s, a, r, s'>을 리플레이 메모리에 저장
-    def append_sample(self, history, action, reward, next_history, dead):
-        self.memory.append((history, action, reward, next_history, dead))
-
-    # 리플레이 메모리에서 무작위로 추출한 배치로 모델 학습
-    def train_model(self):
-        if self.epsilon > self.epsilon_end:
-            self.epsilon -= self.epsilon_decay_step
-
-        mini_batch = random.sample(self.memory, self.batch_size)
-
-        history = np.zeros((self.batch_size, self.state_size[0], self.state_size[1], self.state_size[2]))
-        next_history = np.zeros((self.batch_size, self.state_size[0], self.state_size[1], self.state_size[2]))
-        target = np.zeros((self.batch_size,))
-        action, reward, dead = [], [], []
-
-        for i in range(self.batch_size):
-            history[i] = np.float32(mini_batch[i][0] / 255.)
-            next_history[i] = np.float32(mini_batch[i][3] / 255.)
-            action.append(mini_batch[i][1])
-            reward.append(mini_batch[i][2])
-            dead.append(mini_batch[i][4])
-
-        target_value = self.target_model.predict(next_history)
-
-        for i in range(self.batch_size):
-            if dead[i]:
-                target[i] = reward[i]
-            else:
-                target[i] = reward[i] + self.discount_factor * np.amax(target_value[i])
-
-        loss = self.optimizer([history, action, target])
-        self.avg_loss += loss[0]
-
-    # # 각 에피소드 당 학습 정보를 기록
-    # def setup_summary(self):
-    #     episode_total_reward = tf.Variable(0.)
-    #     episode_avg_max_q = tf.Variable(0.)
-    #     episode_duration = tf.Variable(0.)
-    #     episode_avg_loss = tf.Variable(0.)
-    #
-    #     tf.summary.scalar('Total Reward/Episode', episode_total_reward)
-    #     tf.summary.scalar('Average Max Q/Episode', episode_avg_max_q)
-    #     tf.summary.scalar('Duration/Episode', episode_duration)
-    #     tf.summary.scalar('Average Loss/Episode', episode_avg_loss)
-    #
-    #     summary_vars = [episode_total_reward, episode_avg_max_q, episode_duration, episode_avg_loss]
-    #     summary_placeholders = [tf.placeholder(tf.float32) for _ in range(len(summary_vars))]
-    #     update_ops = [summary_vars[i].assign(summary_placeholders[i]) for i in range(len(summary_vars))]
-    #     summary_op = tf.summary.merge_all()
-    #     return summary_placeholders, update_ops, summary_op
+            return np.argmax(q_value[0]), False
 
     # 학습속도를 높이기 위해 흑백화면으로 전처리
     def pre_processing(self, observe):
@@ -169,7 +115,6 @@ class DQNAgent:
 
 
 def main():
-
     env = gym_super_mario_bros.make('SuperMarioBros-v0')
     env = JoypadSpace(env, SIMPLE_MOVEMENT)
 
@@ -178,8 +123,6 @@ def main():
     scores, episodes, global_step = [], [], 0
 
     global_start = datetime.now()
-    local_start = datetime.now()
-
     print()
     print("-"*100)
     print("RL environment initialized")
@@ -187,6 +130,7 @@ def main():
     print()
 
     for e in range(100):
+
         done = False
         dead = False
 
@@ -202,6 +146,9 @@ def main():
         history = np.stack((state, state, state, state), axis=2)
         history = np.reshape([history], (1, 120, 128, 4))
 
+        count_epsilon = 0
+        count_greedy = 0
+
         while not done:
             # if agent.render:
             env.render()
@@ -210,18 +157,16 @@ def main():
             step += 1
 
             # 바로 전 4개의 상태로 행동을 선택
-            action = agent.get_action(history)
-            print(action)
-            # 1: 정지, 2: 왼쪽, 3: 오른쪽
-            # if action == 0:
-            #     real_action = 1
-            # elif action == 1:
-            #     real_action = 2
-            # else:
-            #     real_action = 3
+            action, res = agent.get_action(history)
+            if res:
+                count_epsilon += 1
+            else:
+                count_greedy += 1
 
             # 선택한 행동으로 환경에서 한 타임스텝 진행
             observe, reward, done, info = env.step(action)
+            # print(reward)
+            # print(info)
             # 각 타임스텝마다 상태 전처리
             next_state = agent.pre_processing(observe)
             next_state = np.reshape([next_state], (1, 120, 128, 1))
@@ -235,7 +180,7 @@ def main():
 
             reward = np.clip(reward, -1., 1.)
             # 샘플 <s, a, r, s'>을 리플레이 메모리에 저장 후 학습
-            agent.append_sample(history, action, reward, next_history, dead)
+            # agent.append_sample(history, action, reward, next_history, dead)
 
             # if len(agent.memory) >= agent.train_start:
             #     agent.train_model()
@@ -245,7 +190,8 @@ def main():
             #     agent.update_target_model()
 
             score += reward
-
+            # print(score)
+            # print(reward)
             if dead:
                 dead = False
             else:
@@ -269,12 +215,13 @@ def main():
 
                 print("episode:", e,
                       "  score:", score,
-                      "  memory length:", len(agent.memory),
+                      # "  memory length:", len(agent.memory),
                       "  epsilon:", agent.epsilon,
                       "  global_step:", global_step,
                       "  average_q:", agent.avg_q_max / float(step),
                       "  average loss:", agent.avg_loss / float(step)
                       )
+                print("epsilon : {}, greedy : {}".format(count_epsilon, count_greedy))
                 print()
 
                 if e == 0:
