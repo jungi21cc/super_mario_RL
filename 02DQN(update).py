@@ -13,45 +13,57 @@ from keras import backend as K
 import tensorflow as tf
 import numpy as np
 import random
-
+from datetime import datetime
+from joblib import dump, load
+import os.path
+import os
 
 class DQNAgent:
-    def __init__(self, action_size):
+    def __init__(self, action_size=7):
         self.render = False
         self.load_model = False
+        self.load_memory = False
         # 상태와 행동의 크기 정의
-        self.state_size = (84, 84, 4)
+        self.state_size = (120, 128, 4)
         self.action_size = action_size
         # DQN 하이퍼파라미터
-        self.epsilon = 1.
-        self.epsilon_start, self.epsilon_end = 1.0, 0.1
-        self.exploration_steps = 1000.
-        self.epsilon_decay_step = (self.epsilon_start - self.epsilon_end) / self.exploration_steps
+        self.epsilon = 0.115
+        # self.epsilon_min = 0.1
+        # # self.exploration_steps = 1000.
+        # self.epsilon_decay_step = 0.0001
         self.batch_size = 32
         self.train_start = 50
         self.update_target_rate = 100
-        self.discount_factor = 0.99
+        self.discount_factor = 0.95
         # 리플레이 메모리, 최대 크기 400000
-        self.memory = deque(maxlen=4000)
-        # self.no_op_steps = 30
+        self.memory = deque(maxlen=100000)
+        self.no_op_steps = 30
         # 모델과 타겟모델을 생성하고 타겟모델 초기화
         self.model = self.build_model()
         self.target_model = self.build_model()
         self.update_target_model()
 
         self.optimizer = self.optimizer()
-
-        # 텐서보드 설정
-        self.sess = tf.InteractiveSession()
-        K.set_session(self.sess)
-
         self.avg_q_max, self.avg_loss = 0, 0
-        self.summary_placeholders, self.update_ops, self.summary_op = self.setup_summary()
-        self.summary_writer = tf.summary.FileWriter('summary/breakout_dqn', self.sess.graph)
-        self.sess.run(tf.global_variables_initializer())
+
+        # # 텐서보드 설정
+        # self.sess = tf.InteractiveSession()
+        # K.set_session(self.sess)
+        #
+        # self.summary_placeholders, self.update_ops, self.summary_op = self.setup_summary()
+        # self.summary_writer = tf.summary.FileWriter('summary/breakout_dqn', self.sess.graph)
+        # self.sess.run(tf.global_variables_initializer())
 
         if self.load_model:
-            self.model.load_weights("./save_model/dqn.h5")
+            self.model.load_weights("./dqn.h5")
+            print("weight load!")
+
+        if os.path.exists("memory.joblib"):
+            if self.load_memory:
+                self.memory = load("./memory.joblib")
+                print("memory load!")
+            # else:
+            #     pass
 
     # Huber Loss를 이용하기 위해 최적화 함수를 직접 정의
     def optimizer(self):
@@ -68,7 +80,7 @@ class DQNAgent:
         linear_part = error - quadratic_part
         loss = K.mean(0.5 * K.square(quadratic_part) + linear_part)
 
-        optimizer = Adam(lr=0.00025, epsilon=0.01)
+        optimizer = Adam()
         updates = optimizer.get_updates(self.model.trainable_weights, [], loss)
         train = K.function([self.model.input, a, y], [loss], updates=updates)
 
@@ -94,10 +106,10 @@ class DQNAgent:
     def get_action(self, history):
         history = np.float32(history / 255.0)
         if np.random.rand() <= self.epsilon:
-            return random.randrange(self.action_size)
+            return random.randrange(self.action_size), True
         else:
             q_value = self.model.predict(history)
-            return np.argmax(q_value[0])
+            return np.argmax(q_value[0]), False
 
     # 샘플 <s, a, r, s'>을 리플레이 메모리에 저장
     def append_sample(self, history, action, reward, next_history, dead):
@@ -105,9 +117,12 @@ class DQNAgent:
 
     # 리플레이 메모리에서 무작위로 추출한 배치로 모델 학습
     def train_model(self):
-        if self.epsilon > self.epsilon_end:
-            self.epsilon -= self.epsilon_decay_step
-
+        # # print("model training!")
+        # if self.epsilon >= self.epsilon_min:
+        #     if self.epsilon <= self.epsilon_min:
+        #         self.epsilon = self.epsilon_min
+        #     else:
+        #         self.epsilon = self.epsilon - self.epsilon_decay_step
         mini_batch = random.sample(self.memory, self.batch_size)
 
         history = np.zeros((self.batch_size, self.state_size[0], self.state_size[1], self.state_size[2]))
@@ -133,29 +148,28 @@ class DQNAgent:
         loss = self.optimizer([history, action, target])
         self.avg_loss += loss[0]
 
-    # 각 에피소드 당 학습 정보를 기록
-    def setup_summary(self):
-        episode_total_reward = tf.Variable(0.)
-        episode_avg_max_q = tf.Variable(0.)
-        episode_duration = tf.Variable(0.)
-        episode_avg_loss = tf.Variable(0.)
+    # # 각 에피소드 당 학습 정보를 기록
+    # def setup_summary(self):
+    #     episode_total_reward = tf.Variable(0.)
+    #     episode_avg_max_q = tf.Variable(0.)
+    #     episode_duration = tf.Variable(0.)
+    #     episode_avg_loss = tf.Variable(0.)
+    #
+    #     tf.summary.scalar('Total Reward/Episode', episode_total_reward)
+    #     tf.summary.scalar('Average Max Q/Episode', episode_avg_max_q)
+    #     tf.summary.scalar('Duration/Episode', episode_duration)
+    #     tf.summary.scalar('Average Loss/Episode', episode_avg_loss)
+    #
+    #     summary_vars = [episode_total_reward, episode_avg_max_q, episode_duration, episode_avg_loss]
+    #     summary_placeholders = [tf.placeholder(tf.float32) for _ in range(len(summary_vars))]
+    #     update_ops = [summary_vars[i].assign(summary_placeholders[i]) for i in range(len(summary_vars))]
+    #     summary_op = tf.summary.merge_all()
+    #     return summary_placeholders, update_ops, summary_op
 
-        tf.summary.scalar('Total Reward/Episode', episode_total_reward)
-        tf.summary.scalar('Average Max Q/Episode', episode_avg_max_q)
-        tf.summary.scalar('Duration/Episode', episode_duration)
-        tf.summary.scalar('Average Loss/Episode', episode_avg_loss)
-
-        summary_vars = [episode_total_reward, episode_avg_max_q, episode_duration, episode_avg_loss]
-        summary_placeholders = [tf.placeholder(tf.float32) for _ in range(len(summary_vars))]
-        update_ops = [summary_vars[i].assign(summary_placeholders[i]) for i in range(len(summary_vars))]
-        summary_op = tf.summary.merge_all()
-        return summary_placeholders, update_ops, summary_op
-
-
-# 학습속도를 높이기 위해 흑백화면으로 전처리
-def pre_processing(observe):
-    processed_observe = np.uint8(resize(rgb2gray(observe), (84, 84), mode='constant') * 255)
-    return processed_observe
+    # 학습속도를 높이기 위해 흑백화면으로 전처리
+    def pre_processing(self, observe):
+        processed_observe = np.uint8(resize(rgb2gray(observe), (120, 128), mode='constant') * 255)
+        return processed_observe
 
 
 def main():
@@ -167,29 +181,45 @@ def main():
 
     scores, episodes, global_step = [], [], 0
 
-    for e in range(5000):
+    global_start = datetime.now()
+    local_start = datetime.now()
+
+    print()
+    print("-"*100)
+    print("RL environment initialized")
+    print()
+    print()
+
+    for e in range(40):
         done = False
         dead = False
 
         step, score, start_life = 0, 0, 5
         observe = env.reset()
-        env.render()
+        # env.render()
+        # env.render()
 
-        # for _ in range(random.randint(1, agent.no_op_steps)):
-        #     observe, _, _, _ = env.step(1)
+        for _ in range(random.randint(1, agent.no_op_steps)):
+            observe, _, _, _ = env.step(1)
 
-        state = pre_processing(observe)
+        state = agent.pre_processing(observe)
         history = np.stack((state, state, state, state), axis=2)
-        history = np.reshape([history], (1, 84, 84, 4))
+        history = np.reshape([history], (1, 120, 128, 4))
+
+        count_epsilon = 0
+        count_greedy = 0
 
         while not done:
             # if agent.render:
             #     env.render()
             global_step += 1
             step += 1
-
             # 바로 전 4개의 상태로 행동을 선택
-            action = agent.get_action(history)
+            action, res = agent.get_action(history)
+            if res:
+                count_epsilon += 1
+            else:
+                count_greedy += 1
             # 1: 정지, 2: 왼쪽, 3: 오른쪽
             # if action == 0:
             #     real_action = 1
@@ -197,27 +227,21 @@ def main():
             #     real_action = 2
             # else:
             #     real_action = 3
-
             # 선택한 행동으로 환경에서 한 타임스텝 진행
             observe, reward, done, info = env.step(action)
             # 각 타임스텝마다 상태 전처리
-            next_state = pre_processing(observe)
-            next_state = np.reshape([next_state], (1, 84, 84, 1))
+            next_state = agent.pre_processing(observe)
+            next_state = np.reshape([next_state], (1, 120, 128, 1))
             next_history = np.append(next_state, history[:, :, :, :3], axis=3)
-
             agent.avg_q_max += np.amax(agent.model.predict(np.float32(history / 255.))[0])
-
             # if start_life > info['ale.lives']:
             #     dead = True
             #     start_life = info['ale.lives']
-
             reward = np.clip(reward, -1., 1.)
             # 샘플 <s, a, r, s'>을 리플레이 메모리에 저장 후 학습
             agent.append_sample(history, action, reward, next_history, dead)
-
             if len(agent.memory) >= agent.train_start:
                 agent.train_model()
-
             # 일정 시간마다 타겟모델을 모델의 가중치로 업데이트
             if global_step % agent.update_target_rate == 0:
                 agent.update_target_model()
@@ -229,14 +253,21 @@ def main():
             else:
                 history = next_history
 
+            if global_step == 0:
+                pass
+            elif global_step % 1000 == 0:
+                print("local step : " + str(global_step) + " time : " + str((datetime.now() - local_start).seconds) + " sec" + ", epsilon : " + str(agent.epsilon))
+                local_start = datetime.now()
+                # print()
+
             if done:
                 # 각 에피소드 당 학습 정보를 기록
-                if global_step > agent.train_start:
-                    stats = [score, agent.avg_q_max / float(step), step, agent.avg_loss / float(step)]
-                    for i in range(len(stats)):
-                        agent.sess.run(agent.update_ops[i], feed_dict={ agent.summary_placeholders[i]: float(stats[i]) })
-                    summary_str = agent.sess.run(agent.summary_op)
-                    agent.summary_writer.add_summary(summary_str, e + 1)
+                # if global_step > agent.train_start:
+                #     stats = [score, agent.avg_q_max / float(step), step, agent.avg_loss / float(step)]
+                #     for i in range(len(stats)):
+                #         agent.sess.run(agent.update_ops[i], feed_dict={ agent.summary_placeholders[i]: float(stats[i]) })
+                #     summary_str = agent.sess.run(agent.summary_op)
+                #     agent.summary_writer.add_summary(summary_str, e + 1)
 
                 print("episode:", e,
                       "  score:", score,
@@ -246,12 +277,36 @@ def main():
                       "  average_q:", agent.avg_q_max / float(step),
                       "  average loss:", agent.avg_loss / float(step)
                       )
+                print("epsilon : {}, greedy : {}".format(count_epsilon, count_greedy))
+                print()
+
+                if e < 2:
+                    pass
+                else:
+                    print("time elapsed : " + str((datetime.now() - global_start).seconds) + " sec")
+                    global_start = datetime.now()
+                    print()
+                    # print("epsilon!")
+                    # print(epsilon)
+                    # print("greedy!")
+                    # print(greedy)
+                    print()
 
                 agent.avg_q_max, agent.avg_loss = 0, 0
 
         # 1000 에피소드마다 모델 저장
-        if e % 10 == 0:
-            agent.model.save_weights("./save_model/dqn.h5")
+        if e % 2 == 0:
+            agent.model.save_weights("./dqn.h5")
+            dump(agent.memory, "memory.joblib")
+            print("model saved!")
+            print()
+
+        # if e == 0:
+        #     pass
+        # else:
+        #     print("time elapsed : " + str((datetime.now() - global_start).seconds) + " sec")
+        #     global_start = datetime.now()
+        #     print()
 
 
 if __name__ == "__main__":
