@@ -2,4 +2,5 @@
 .idea/
 *.joblib
 *.h5
+config.py
 summary

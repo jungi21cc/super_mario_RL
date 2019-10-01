@@ -18,6 +18,21 @@ from joblib import dump, load
 import os.path
 import os
 
+### slcak
+from slacker import Slacker
+from config import token
+
+
+def slack_msg(msg):
+    slack = Slacker(token)
+    attachments_dict = dict()
+    attachments_dict["pretext"] = "{}".format(datetime.now())
+    attachments_dict["title"] = "=====DQN result====="
+    attachments_dict["text"] = "```{}```".format(msg)
+    attachments_dict["mrkdwn_in"] = ["text", "pretext"]  # 마크다운을 적용시킬 인자들을 선택합니다.
+    attachments = [attachments_dict]
+    slack.chat.post_message(channel="#jarvis", text=None, attachments=attachments)
+
 
 class DQNAgent:
     def __init__(self, action_size=7):
@@ -179,7 +194,7 @@ def main():
         coinStatus = 0
         marioStatus = "small"
         flagStatus = False
-        softReward= 0
+        softReward = 0
         lifeStatus = 2
 
         while not done:
@@ -250,21 +265,29 @@ def main():
             if global_step == 0:
                 pass
             elif global_step % 1000 == 0:
-                print("local step : {}, time : {} sec, epsilon : {}".format(global_step, (datetime.now() - local_start).seconds, agent.epsilon))
+                print("local step : {}, time : {} sec, epsilon : {}".format(global_step,
+                                                                            (datetime.now() - local_start).seconds,
+                                                                            agent.epsilon))
                 local_start = datetime.now()
 
             if done:
-                print(
-                    "episode : {}, score : {}, memory : {}, step : {}, avg q : {}, avg loss : {}".format(
-                        e, score, len(agent.memory), agent.epsilon, global_step, agent.avg_q_max / float(step), agent.avg_loss / float(step)
-                    )
-                )
+                ep_result = "episode : {}, score : {}, memory : {}, step : {}, avg q : {}, avg loss : {}".format(e, score, len(agent.memory), agent.epsilon, global_step, agent.avg_q_max / float(step), agent.avg_loss / float(step))
+                print(ep_result)
                 print("epsilon : {}, greedy : {}".format(count_epsilon, count_greedy))
                 print()
                 print("time elapsed : {} sec".format((datetime.now() - global_start).seconds))
                 global_start = datetime.now()
                 print()
                 print()
+
+                slack_msg(ep_result)
+
+                if score > 2000 and score <= 3000:
+                    agent.epsilon = 0.075
+                elif score > 3000 and score <= 5000:
+                    agent.epsilon = 0.05
+                elif score > 5000 and score <= 10000:
+                    agent.epsilon = 0.005
 
                 agent.avg_q_max, agent.avg_loss, global_step = 0, 0, 0
 
