@@ -18,13 +18,19 @@ from joblib import dump, load
 import os.path
 import os
 
+
 class DQNAgent:
     def __init__(self, action_size=7):
+<<<<<<< HEAD
         self.render = False
         self.load_model = False
+=======
+        # self.render = False
+        self.load_model = True
+>>>>>>> c1ca6a86e88917fc5180067bb6741363f3ec550c
         self.load_memory = False
         # 상태와 행동의 크기 정의
-        self.state_size = (120, 128, 4)
+        self.state_size = (180, 192, 4)
         self.action_size = action_size
         # DQN 하이퍼파라미터
         self.epsilon = 0.115
@@ -36,7 +42,7 @@ class DQNAgent:
         self.update_target_rate = 100
         self.discount_factor = 0.95
         # 리플레이 메모리, 최대 크기 400000
-        self.memory = deque(maxlen=100000)
+        self.memory = deque(maxlen=200000)
         self.no_op_steps = 30
         # 모델과 타겟모델을 생성하고 타겟모델 초기화
         self.model = self.build_model()
@@ -81,9 +87,10 @@ class DQNAgent:
     # 상태가 입력, 큐함수가 출력인 인공신경망 생성
     def build_model(self):
         model = Sequential()
-        model.add(Conv2D(32, (8, 8), strides=(4, 4), activation='relu', input_shape=self.state_size))
-        model.add(Conv2D(64, (4, 4), strides=(2, 2), activation='relu'))
-        model.add(Conv2D(64, (3, 3), strides=(1, 1), activation='relu'))
+        model.add(Conv2D(64, (8, 8), strides=(4, 4), activation='relu', input_shape=self.state_size))
+        model.add(Conv2D(32, (4, 4), strides=(2, 2), activation='relu'))
+        model.add(Conv2D(16, (2, 2), strides=(1, 1), activation='relu'))
+        # model.add(Conv2D(64, (2, 2), strides=(1, 1), activation='relu'))
         model.add(Flatten())
         model.add(Dense(512, activation='relu'))
         model.add(Dense(self.action_size))
@@ -136,12 +143,11 @@ class DQNAgent:
 
     # 학습속도를 높이기 위해 흑백화면으로 전처리
     def pre_processing(self, observe):
-        processed_observe = np.uint8(resize(rgb2gray(observe), (120, 128), mode='constant') * 255)
+        processed_observe = np.uint8(resize(rgb2gray(observe), (180, 192), mode='constant') * 255)
         return processed_observe
 
 
 def main():
-
     env = gym_super_mario_bros.make('SuperMarioBros-v0')
     env = JoypadSpace(env, SIMPLE_MOVEMENT)
 
@@ -153,9 +159,9 @@ def main():
     local_start = datetime.now()
 
     print()
-    print("-"*100)
+    print("=" * 100)
     print("RL environment initialized")
-    print()
+    print("=" * 100)
     print()
 
     for e in range(100):
@@ -170,10 +176,16 @@ def main():
 
         state = agent.pre_processing(observe)
         history = np.stack((state, state, state, state), axis=2)
-        history = np.reshape([history], (1, 120, 128, 4))
+        history = np.reshape([history], (1, 180, 192, 4))
 
         count_epsilon = 0
         count_greedy = 0
+
+        coinStatus = 0
+        marioStatus = "small"
+        flagStatus = False
+        softReward= 0
+        lifeStatus = 0
 
         while not done:
             # if agent.render:
@@ -191,14 +203,48 @@ def main():
             observe, reward, done, info = env.step(action)
             # 각 타임스텝마다 상태 전처리
             next_state = agent.pre_processing(observe)
-            next_state = np.reshape([next_state], (1, 120, 128, 1))
+            next_state = np.reshape([next_state], (1, 180, 192, 1))
             next_history = np.append(next_state, history[:, :, :, :3], axis=3)
             agent.avg_q_max += np.amax(agent.model.predict(np.float32(history / 255.))[0])
             # if start_life > info['ale.lives']:
             #     dead = True
             #     start_life = info['ale.lives']
-            reward = np.clip(reward, -1., 1.)
-            reward = reward + info["coins"]
+            # reward = np.clip(reward, -1., 1.)
+            real_reward = reward
+
+            ###
+            ###
+            ###
+            reward = reward
+            if coinStatus != info["coins"]:
+                coinStatus = info["coins"]
+                reward = reward + 10
+            if marioStatus != info["status"]:
+                marioStatus = info["status"]
+                reward = reward + 200
+            if flagStatus != info["flag_get"]:
+                flagStatus = info["flag_get"]
+                reward = reward + 200
+            if lifeStatus != info["life"]:
+                lifeStatus = info["life"]
+                reward = reward - 200
+
+            if info["x_pos"] < 10:
+                info["x_pos"] = 10
+            if info["time"] < 10:
+                info["time"] = 10
+
+            reward = reward + ((info["x_pos"] / info["time"]) + info["x_pos"]) / 100
+
+            # reward = reward / 100
+            # # if info["coins"] != 0:
+            # #     reward = reward + info["coins"]
+            # if info["flag_get"]:
+            #     reward = reward + 200
+            # if info["status"] != "small":
+            #     reward = reward + 200
+            # if
+
             # 샘플 <s, a, r, s'>을 리플레이 메모리에 저장 후 학습
             agent.append_sample(history, action, reward, next_history, dead)
             if len(agent.memory) >= agent.train_start:
@@ -207,7 +253,8 @@ def main():
             if global_step % agent.update_target_rate == 0:
                 agent.update_target_model()
 
-            score += reward
+            # score += reward
+            score += real_reward
 
             if dead:
                 dead = False
@@ -217,21 +264,36 @@ def main():
             if global_step == 0:
                 pass
             elif global_step % 1000 == 0:
-                print("local step : " + str(global_step) + " time : " + str((datetime.now() - local_start).seconds) + " sec" + ", epsilon : " + str(agent.epsilon))
+                print("local step : {}, time : {} sec, epsilon : {}".format(global_step, (datetime.now() - local_start).seconds, agent.epsilon))
+                # print("local step : " + str(global_step) + " time : " + str(
+                #     (datetime.now() - local_start).seconds) + " sec" + ", epsilon : " + str(agent.epsilon))
                 local_start = datetime.now()
                 # print()
 
             if done:
-                print("episode:", e,
-                      "  score:", score,
-                      "  memory length:", len(agent.memory),
-                      "  epsilon:", agent.epsilon,
-                      "  global_step:", global_step,
-                      "  average_q:", agent.avg_q_max / float(step),
-                      "  average loss:", agent.avg_loss / float(step)
-                      )
+                print(
+                    "episode : {}, score : {}, memory : {}, step : {}, avg q : {}, avg loss : {}".format(
+                        e, score, len(agent.memory), agent.epsilon, global_step, agent.avg_q_max / float(step), agent.avg_loss / float(step)
+                    )
+                )
                 print("epsilon : {}, greedy : {}".format(count_epsilon, count_greedy))
                 print()
+
+                ## if score < 1500:
+                ##     agent.epsilon = 0.07
+
+                # if score >= 1500 and score < 2000:
+                #     agent.epsilon = 0.07
+                #     print("epsilon decay to 0.07!")
+                # elif score >= 2000 and score < 3000:
+                #     agent.epsilon = 0.05
+                #     print("epsilon decay to 0.05!")
+                # elif score >= 3000 and score < 4000:
+                #     agent.epsilon = 0.02
+                #     print("epsilon decay to 0.02!")
+                # elif score >= 4000:
+                #     agent.epsilon = 0.005
+                #     print("epsilon decay to 0.005!")
 
                 if e < 2:
                     pass
