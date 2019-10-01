@@ -17,6 +17,7 @@ from datetime import datetime
 from joblib import dump, load
 import os.path
 import os
+import math
 
 ### slcak
 from slacker import Slacker
@@ -237,14 +238,14 @@ def main():
                 reward = reward + 200
             if lifeStatus != info["life"]:
                 lifeStatus = info["life"]
-                reward = reward - 200
+                reward = reward - 20
 
             if info["x_pos"] < 10:
                 info["x_pos"] = 10
             if info["time"] < 10:
                 info["time"] = 10
 
-            reward = reward + ((info["x_pos"] / info["time"]) + info["x_pos"]) / 100
+            reward = reward + math.log((info["x_pos"] / info["time"]) + info["x_pos"])
 
             # 샘플 <s, a, r, s'>을 리플레이 메모리에 저장 후 학습
             agent.append_sample(history, action, reward, next_history, dead)
@@ -271,7 +272,9 @@ def main():
                 local_start = datetime.now()
 
             if done:
-                ep_result = "episode : {}, score : {}, memory : {}, step : {}, avg q : {}, avg loss : {}".format(e, score, len(agent.memory), agent.epsilon, global_step, agent.avg_q_max / float(step), agent.avg_loss / float(step))
+                ep_result = "episode : {}, score : {}, memory : {}, step : {}, avg q : {}, avg loss : {}".format(
+                    e, score, len(agent.memory), agent.epsilon, global_step, agent.avg_q_max / float(step), agent.avg_loss / float(step)
+                )
                 print(ep_result)
                 print("epsilon : {}, greedy : {}".format(count_epsilon, count_greedy))
                 print()
