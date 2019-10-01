@@ -21,14 +21,9 @@ import os
 
 class DQNAgent:
     def __init__(self, action_size=7):
-<<<<<<< HEAD
-        self.render = False
-        self.load_model = False
-=======
         # self.render = False
         self.load_model = True
->>>>>>> c1ca6a86e88917fc5180067bb6741363f3ec550c
-        self.load_memory = False
+        self.load_memory = True
         # 상태와 행동의 크기 정의
         self.state_size = (180, 192, 4)
         self.action_size = action_size
@@ -185,7 +180,7 @@ def main():
         marioStatus = "small"
         flagStatus = False
         softReward= 0
-        lifeStatus = 0
+        lifeStatus = 2
 
         while not done:
             # if agent.render:
@@ -236,15 +231,6 @@ def main():
 
             reward = reward + ((info["x_pos"] / info["time"]) + info["x_pos"]) / 100
 
-            # reward = reward / 100
-            # # if info["coins"] != 0:
-            # #     reward = reward + info["coins"]
-            # if info["flag_get"]:
-            #     reward = reward + 200
-            # if info["status"] != "small":
-            #     reward = reward + 200
-            # if
-
             # 샘플 <s, a, r, s'>을 리플레이 메모리에 저장 후 학습
             agent.append_sample(history, action, reward, next_history, dead)
             if len(agent.memory) >= agent.train_start:
@@ -265,10 +251,7 @@ def main():
                 pass
             elif global_step % 1000 == 0:
                 print("local step : {}, time : {} sec, epsilon : {}".format(global_step, (datetime.now() - local_start).seconds, agent.epsilon))
-                # print("local step : " + str(global_step) + " time : " + str(
-                #     (datetime.now() - local_start).seconds) + " sec" + ", epsilon : " + str(agent.epsilon))
                 local_start = datetime.now()
-                # print()
 
             if done:
                 print(
@@ -278,32 +261,12 @@ def main():
                 )
                 print("epsilon : {}, greedy : {}".format(count_epsilon, count_greedy))
                 print()
+                print("time elapsed : {} sec".format((datetime.now() - global_start).seconds))
+                global_start = datetime.now()
+                print()
+                print()
 
-                ## if score < 1500:
-                ##     agent.epsilon = 0.07
-
-                # if score >= 1500 and score < 2000:
-                #     agent.epsilon = 0.07
-                #     print("epsilon decay to 0.07!")
-                # elif score >= 2000 and score < 3000:
-                #     agent.epsilon = 0.05
-                #     print("epsilon decay to 0.05!")
-                # elif score >= 3000 and score < 4000:
-                #     agent.epsilon = 0.02
-                #     print("epsilon decay to 0.02!")
-                # elif score >= 4000:
-                #     agent.epsilon = 0.005
-                #     print("epsilon decay to 0.005!")
-
-                if e < 2:
-                    pass
-                else:
-                    print("time elapsed : " + str((datetime.now() - global_start).seconds) + " sec")
-                    global_start = datetime.now()
-                    print()
-                    print()
-
-                agent.avg_q_max, agent.avg_loss = 0, 0
+                agent.avg_q_max, agent.avg_loss, global_step = 0, 0, 0
 
         # 1000 에피소드마다 모델 저장
         if e == 0:

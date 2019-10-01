@@ -17,7 +17,7 @@ EPISODES = 8000000
 
 class TestAgent:
     def __init__(self, action_size):
-        self.state_size = (84, 84, 4)
+        self.state_size = (180, 192, 4)
         self.action_size = action_size
 
         self.discount_factor = 0.99
@@ -27,10 +27,11 @@ class TestAgent:
 
     def build_model(self):
         input = Input(shape=self.state_size)
-        conv = Conv2D(16, (8, 8), strides=(4, 4), activation='relu')(input)
+        conv = Conv2D(64, (8, 8), strides=(4, 4), activation='relu')(input)
         conv = Conv2D(32, (4, 4), strides=(2, 2), activation='relu')(conv)
+        conv = Conv2D(16, (2, 2), strides=(1, 1), activation='relu')(conv)
         conv = Flatten()(conv)
-        fc = Dense(256, activation='relu')(conv)
+        fc = Dense(128, activation='relu')(conv)
         policy = Dense(self.action_size, activation='softmax')(fc)
         value = Dense(1, activation='linear')(fc)
 
@@ -55,7 +56,7 @@ class TestAgent:
 def pre_processing(next_observe, observe):
     processed_observe = np.maximum(next_observe, observe)
     processed_observe = np.uint8(
-        resize(rgb2gray(processed_observe), (84, 84), mode='constant') * 255)
+        resize(rgb2gray(processed_observe), (180, 192), mode='constant') * 255)
     return processed_observe
 
 
@@ -82,7 +83,7 @@ if __name__ == "__main__":
 
         state = pre_processing(next_observe, observe)
         history = np.stack((state, state, state, state), axis=2)
-        history = np.reshape([history], (1, 84, 84, 4))
+        history = np.reshape([history], (1, 180, 192, 4))
 
         while not done:
             env.render()
@@ -105,13 +106,13 @@ if __name__ == "__main__":
             next_observe, reward, done, info = env.step(action)
 
             next_state = pre_processing(next_observe, observe)
-            next_state = np.reshape([next_state], (1, 84, 84, 1))
+            next_state = np.reshape([next_state], (1, 180, 192, 1))
             next_history = np.append(next_state, history[:, :, :, :3], axis=3)
 
-            if start_life > info['life']:
-                dead = True
-                reward = -1
-                start_life = info['life']
+            # if start_life > info['life']:
+            #     dead = True
+            #     reward = -1
+            #     start_life = info['life']
 
             score += reward
 
@@ -119,7 +120,7 @@ if __name__ == "__main__":
             if dead:
                 history = np.stack(
                     (next_state, next_state, next_state, next_state), axis=2)
-                history = np.reshape([history], (1, 84, 84, 4))
+                history = np.reshape([history], (1, 180, 192, 4))
             else:
                 history = next_history
 

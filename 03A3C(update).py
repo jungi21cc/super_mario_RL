@@ -19,6 +19,8 @@ from gym_super_mario_bros.actions import SIMPLE_MOVEMENT
 global episode
 episode = 0
 EPISODES = 8000000
+
+
 # 환경 생성
 # env_name = "BreakoutDeterministic-v4"
 
@@ -27,7 +29,7 @@ EPISODES = 8000000
 class A3CAgent:
     def __init__(self, action_size):
         # 상태크기와 행동크기를 갖고옴
-        self.state_size = (84, 84, 4)
+        self.state_size = (180, 192, 4)
         self.action_size = action_size
         # A3C 하이퍼파라미터
         self.discount_factor = 0.95
@@ -54,9 +56,12 @@ class A3CAgent:
     def train(self):
         # 쓰레드 수만큼 Agent 클래스 생성
         agents = [
-            Agent(self.action_size, self.state_size, [self.actor, self.critic], self.sess, self.optimizer, self.discount_factor,
+            Agent(
+                self.action_size, self.state_size, [self.actor, self.critic],
+                # self.sess,
+                self.optimizer, self.discount_factor,
                   # [self.summary_op, self.summary_placeholders, self.update_ops, self.summary_writer]
-            )
+                  )
             for _ in range(self.threads)]
 
         # 각 쓰레드 시작
@@ -69,14 +74,16 @@ class A3CAgent:
             time.sleep(60)
             self.save_model("./a3c")
             print("model saved!")
+            print()
 
     # 정책신경망과 가치신경망을 생성
     def build_model(self):
         input = Input(shape=self.state_size)
-        conv = Conv2D(16, (8, 8), strides=(4, 4), activation='relu')(input)
+        conv = Conv2D(64, (8, 8), strides=(4, 4), activation='relu')(input)
         conv = Conv2D(32, (4, 4), strides=(2, 2), activation='relu')(conv)
+        conv = Conv2D(16, (2, 2), strides=(1, 1), activation='relu')(conv)
         conv = Flatten()(conv)
-        fc = Dense(256, activation='relu')(conv)
+        fc = Dense(128, activation='relu')(conv)
 
         policy = Dense(self.action_size, activation='softmax')(fc)
         value = Dense(1, activation='linear')(fc)
@@ -112,8 +119,8 @@ class A3CAgent:
         # 두 오류함수를 더해 최종 오류함수를 만듬
         loss = cross_entropy + 0.01 * entropy
 
-        optimizer = RMSprop(lr=self.actor_lr, rho=0.99, epsilon=0.01)
-        updates = optimizer.get_updates(self.actor.trainable_weights, [],loss)
+        optimizer = RMSprop()
+        updates = optimizer.get_updates(self.actor.trainable_weights, [], loss)
         train = K.function([self.actor.input, action, advantages], [loss], updates=updates)
         return train
 
@@ -126,8 +133,8 @@ class A3CAgent:
         # [반환값 - 가치]의 제곱을 오류함수로 함
         loss = K.mean(K.square(discounted_prediction - value))
 
-        optimizer = RMSprop(lr=self.critic_lr, rho=0.99, epsilon=0.01)
-        updates = optimizer.get_updates(self.critic.trainable_weights, [],loss)
+        optimizer = RMSprop()
+        updates = optimizer.get_updates(self.critic.trainable_weights, [], loss)
         train = K.function([self.critic.input, discounted_prediction], [loss], updates=updates)
         return train
 
@@ -159,14 +166,18 @@ class A3CAgent:
 
 # 액터러너 클래스(쓰레드)
 class Agent(threading.Thread):
-    def __init__(self, action_size, state_size, model, sess, optimizer, discount_factor, summary_ops):
+    def __init__(self, action_size, state_size, model,
+                 # sess,
+                 optimizer, discount_factor,
+                 # summary_ops
+                 ):
         threading.Thread.__init__(self)
 
         # A3CAgent 클래스에서 상속
         self.action_size = action_size
         self.state_size = state_size
         self.actor, self.critic = model
-        self.sess = sess
+        # self.sess = sess
         self.optimizer = optimizer
         self.discount_factor = discount_factor
         # [self.summary_op, self.summary_placeholders, self.update_ops, self.summary_writer] = summary_ops
@@ -201,7 +212,6 @@ class Agent(threading.Thread):
             observe = env.reset()
             next_observe = observe
 
-
             # # 0~30 상태동안 정지
             # for _ in range(random.randint(1, 30)):
             #     observe = next_observe
@@ -209,7 +219,13 @@ class Agent(threading.Thread):
 
             state = pre_processing(next_observe, observe)
             history = np.stack((state, state, state, state), axis=2)
-            history = np.reshape([history], (1, 84, 84, 4))
+            history = np.reshape([history], (1, 180, 192, 4))
+
+            coinStatus = 0
+            marioStatus = "small"
+            flagStatus = False
+            softReward = 0
+            lifeStatus = 2
 
             while not done:
                 step += 1
@@ -236,27 +252,45 @@ class Agent(threading.Thread):
 
                 # 각 타임스텝마다 상태 전처리
                 next_state = pre_processing(next_observe, observe)
-                next_state = np.reshape([next_state], (1, 84, 84, 1))
-                next_history = np.append(next_state, history[:, :, :, :3],
-                                         axis=3)
+                next_state = np.reshape([next_state], (1, 180, 192, 1))
+                next_history = np.append(next_state, history[:, :, :, :3], axis=3)
 
                 # 정책의 최대값
-                self.avg_p_max += np.amax(self.actor.predict(
-                    np.float32(history / 255.)))
+                self.avg_p_max += np.amax(self.actor.predict(np.float32(history / 255.)))
 
+                real_reward = reward
                 # if start_life > info['life']:
                 #     dead = True
                 #     start_life = info['life']
+                if coinStatus != info["coins"]:
+                    coinStatus = info["coins"]
+                    reward = reward + 10
+                if marioStatus != info["status"]:
+                    marioStatus = info["status"]
+                    reward = reward + 200
+                if flagStatus != info["flag_get"]:
+                    flagStatus = info["flag_get"]
+                    reward = reward + 200
+                if lifeStatus != info["life"]:
+                    lifeStatus = info["life"]
+                    reward = reward - 200
 
-                score += reward
-                reward = np.clip(reward, -1., 1.)
+                if info["x_pos"] < 10:
+                    info["x_pos"] = 10
+                if info["time"] < 10:
+                    info["time"] = 10
+
+                reward = reward + ((info["x_pos"] / info["time"]) + info["x_pos"]) / 100
+
+                score += real_reward
+                # reward = np.clip(reward, -1., 1.)
 
                 # 샘플을 저장
                 self.append_sample(history, action, reward)
 
                 if dead:
                     history = np.stack((next_state, next_state, next_state, next_state), axis=2)
-                    history = np.reshape([history], (1, 84, 84, 4))
+                    history = np.reshape([history], (1, 180, 192, 4))
                 else:
                     history = next_history
 
@@ -297,7 +331,7 @@ class Agent(threading.Thread):
     def train_model(self, done):
         discounted_prediction = self.discounted_prediction(self.rewards, done)
 
-        states = np.zeros((len(self.states), 84, 84, 4))
+        states = np.zeros((len(self.states), 180, 192, 4))
         for i in range(len(self.states)):
             states[i] = self.states[i]
 
@@ -315,10 +349,11 @@ class Agent(threading.Thread):
     # 로컬신경망을 생성하는 함수
     def build_local_model(self):
         input = Input(shape=self.state_size)
-        conv = Conv2D(16, (8, 8), strides=(4, 4), activation='relu')(input)
+        conv = Conv2D(64, (8, 8), strides=(4, 4), activation='relu')(input)
         conv = Conv2D(32, (4, 4), strides=(2, 2), activation='relu')(conv)
+        conv = Conv2D(16, (2, 2), strides=(1, 1), activation='relu')(conv)
         conv = Flatten()(conv)
-        fc = Dense(256, activation='relu')(conv)
+        fc = Dense(128, activation='relu')(conv)
         policy = Dense(self.action_size, activation='softmax')(fc)
         value = Dense(1, activation='linear')(fc)
 
@@ -360,7 +395,7 @@ class Agent(threading.Thread):
 # 학습속도를 높이기 위해 흑백화면으로 전처리
 def pre_processing(next_observe, observe):
     processed_observe = np.maximum(next_observe, observe)
-    processed_observe = np.uint8(resize(rgb2gray(processed_observe), (84, 84), mode='constant') * 255)
+    processed_observe = np.uint8(resize(rgb2gray(processed_observe), (180, 192), mode='constant') * 255)
     return processed_observe
 
 
