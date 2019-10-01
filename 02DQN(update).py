@@ -21,8 +21,8 @@ import os
 class DQNAgent:
     def __init__(self, action_size=7):
         self.render = False
-        self.load_model = True
-        self.load_memory = True
+        self.load_model = False
+        self.load_memory = False
         # 상태와 행동의 크기 정의
         self.state_size = (120, 128, 4)
         self.action_size = action_size
