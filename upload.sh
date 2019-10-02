@@ -1,0 +1,1 @@
+aws s3 cp ./dqn.h5 s3://remy-dev/leo/

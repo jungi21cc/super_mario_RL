@@ -1,5 +1,7 @@
-tensorflow
-keras
+tensorflow==1.14
+keras==2.2.4
 nes_py
 gym_super_mario_bros
 numpy
+scikit-image
+slacker

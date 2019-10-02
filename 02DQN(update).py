@@ -175,7 +175,7 @@ def main():
     print("=" * 100)
     print()
 
-    for e in range(100):
+    for e in range(30):
         e = e + 1
         done = False
         dead = False

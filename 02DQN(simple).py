@@ -52,11 +52,11 @@ class DQNAgent:
     # 입실론 탐욕 정책으로 행동 선택
     def get_action(self, history):
         history = np.float32(history / 255.0)
-        # if np.random.rand() <= self.epsilon:
-        #     return random.randrange(self.action_size), True
-        # else:
-        q_value = self.model.predict(history)
-        return np.argmax(q_value[0]), False
+        if np.random.rand() <= self.epsilon:
+            return random.randrange(self.action_size), True
+        else:
+            q_value = self.model.predict(history)
+            return np.argmax(q_value[0]), False
 
     # 학습속도를 높이기 위해 흑백화면으로 전처리
     def pre_processing(self, observe):
