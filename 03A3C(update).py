@@ -44,6 +44,8 @@ class A3CAgent:
         self.pre_fix = "./a3c"
         self.start = datetime.now()
 
+        self.count = 0
+
         # 정책신경망과 가치신경망을 생성
         self.actor, self.critic = self.build_model()
         # 정책신경망과 가치신경망을 업데이트하는 함수 생성
@@ -83,8 +85,9 @@ class A3CAgent:
             time.sleep(60)
             self.save_model(self.pre_fix)
             print("model saved!")
-            print("time elapsed : {} sec".format((datetime.now() - self.start).seconds))
+            print("count : {} , time elapsed : {} sec".format(self.count, (datetime.now() - self.start).seconds))
             self.start = datetime.now()
+            self.count = self.count + 1
             print()
 
     # 정책신경망과 가치신경망을 생성
