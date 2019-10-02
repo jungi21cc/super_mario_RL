@@ -40,7 +40,7 @@ class A3CAgent:
         # 쓰레드의 갯수
         self.threads = 8
         #
-        self.load = False
+        self.load = True
         self.pre_fix = "./a3c"
         self.start = datetime.now()
 
