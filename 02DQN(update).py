@@ -47,7 +47,7 @@ class DQNAgent:
         self.epsilon = 0.115
         # self.epsilon_min = 0.1
         # # self.exploration_steps = 1000.
-        # self.epsilon_decay_step = 0.0001
+        self.epsilon_decay_step = 0.002
         self.batch_size = 32
         self.train_start = 50
         self.update_target_rate = 100
@@ -101,7 +101,6 @@ class DQNAgent:
         model.add(Conv2D(64, (8, 8), strides=(4, 4), activation='relu', input_shape=self.state_size))
         model.add(Conv2D(32, (4, 4), strides=(2, 2), activation='relu'))
         model.add(Conv2D(16, (2, 2), strides=(1, 1), activation='relu'))
-        # model.add(Conv2D(64, (2, 2), strides=(1, 1), activation='relu'))
         model.add(Flatten())
         model.add(Dense(512, activation='relu'))
         model.add(Dense(self.action_size))
@@ -218,9 +217,9 @@ def main():
             next_state = np.reshape([next_state], (1, 180, 192, 1))
             next_history = np.append(next_state, history[:, :, :, :3], axis=3)
             agent.avg_q_max += np.amax(agent.model.predict(np.float32(history / 255.))[0])
-            # if start_life > info['ale.lives']:
-            #     dead = True
-            #     start_life = info['ale.lives']
+            if start_life > info['life']:
+                dead = True
+                start_life = info['life']
             # reward = np.clip(reward, -1., 1.)
             real_reward = reward
 
@@ -267,31 +266,28 @@ def main():
             if global_step == 0:
                 pass
             elif global_step % 1000 == 0:
-                print("local step : {}, time : {} sec, epsilon : {}".format(global_step,
-                                                                            (datetime.now() - local_start).seconds,
-                                                                            agent.epsilon))
+                print("local step : {}, time : {} sec, epsilon : {}".format(global_step, (datetime.now() - local_start).seconds, agent.epsilon))
                 local_start = datetime.now()
 
             if done:
-                ep_result = "episode : {}, score : {}, memory : {}, step : {}, avg q : {}, avg loss : {}".format(
-                    e, score, len(agent.memory), agent.epsilon, global_step, agent.avg_q_max / float(step), agent.avg_loss / float(step)
-                )
+                ep_result = "episode : {}, score : {}, memory : {}, step : {}".format(e, score, len(agent.memory), global_step)
                 print(ep_result)
                 print("epsilon : {}, greedy : {}".format(count_epsilon, count_greedy))
                 print()
                 print("time elapsed : {} sec".format((datetime.now() - global_start).seconds))
                 global_start = datetime.now()
-                print()
+                agent.epsilon = agent.epsilon - agent.epsilon_decay_step
+                print("epsilon decay to {}!".format(agent.epsilon))
                 print()
 
                 slack_msg(ep_result)
 
-                if score > 2000 and score <= 3000:
-                    agent.epsilon = 0.075
-                elif score > 3000 and score <= 5000:
-                    agent.epsilon = 0.05
-                elif score > 5000 and score <= 10000:
-                    agent.epsilon = 0.005
+                # if score > 2000 and score <= 3000:
+                #     agent.epsilon = 0.075
+                # elif score > 3000 and score <= 5000:
+                #     agent.epsilon = 0.05
+                # elif score > 5000 and score <= 10000:
+                #     agent.epsilon = 0.005
 
                 agent.avg_q_max, agent.avg_loss, global_step = 0, 0, 0
 
@@ -300,7 +296,7 @@ def main():
             pass
         elif e % 2 == 0:
             agent.model.save_weights("./dqn.h5")
-            dump(agent.memory, "memory.joblib")
+            # dump(agent.memory, "memory.joblib")
             print("model saved!")
             print()
 

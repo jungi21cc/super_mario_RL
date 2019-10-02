@@ -112,7 +112,7 @@ def main():
 
             # 선택한 행동으로 환경에서 한 타임스텝 진행
             observe, reward, done, info = env.step(action)
-            print(info)
+            # print(info)
             # 각 타임스텝마다 상태 전처리
             next_state = agent.pre_processing(observe)
             next_state = np.reshape([next_state], (1, 180, 192, 1))

@@ -38,11 +38,18 @@ class A3CAgent:
         self.critic_lr = 2.5e-4
         # 쓰레드의 갯수
         self.threads = 8
+        #
+        self.load_model = True
+        self.pre_fix = "./a3c"
 
         # 정책신경망과 가치신경망을 생성
         self.actor, self.critic = self.build_model()
         # 정책신경망과 가치신경망을 업데이트하는 함수 생성
         self.optimizer = [self.actor_optimizer(), self.critic_optimizer()]
+
+        if self.load_model:
+            self.load_model(self.pre_fix)
+            print("load model!")
 
         # # 텐서보드 설정
         # self.sess = tf.InteractiveSession()
@@ -72,7 +79,7 @@ class A3CAgent:
         # 10분(600초)에 한번씩 모델을 저장
         while True:
             time.sleep(60)
-            self.save_model("./a3c")
+            self.save_model(self.pre_fix)
             print("model saved!")
             print()
 
