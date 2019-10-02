@@ -39,7 +39,7 @@ class DQNAgent:
     def __init__(self, action_size=7):
         # self.render = False
         self.load_model = True
-        self.load_memory = True
+        self.load_memory = False
         # 상태와 행동의 크기 정의
         self.state_size = (180, 192, 4)
         self.action_size = action_size
@@ -176,6 +176,7 @@ def main():
     print()
 
     for e in range(100):
+        e = e + 1
         done = False
         dead = False
 
@@ -226,26 +227,26 @@ def main():
             ###
             ###
             ###
-            reward = reward
-            if coinStatus != info["coins"]:
-                coinStatus = info["coins"]
-                reward = reward + 10
-            if marioStatus != info["status"]:
-                marioStatus = info["status"]
-                reward = reward + 200
-            if flagStatus != info["flag_get"]:
-                flagStatus = info["flag_get"]
-                reward = reward + 200
-            if lifeStatus != info["life"]:
-                lifeStatus = info["life"]
-                reward = reward - 20
-
-            if info["x_pos"] < 10:
-                info["x_pos"] = 10
-            if info["time"] < 10:
-                info["time"] = 10
-
-            reward = reward + math.log((info["x_pos"] / info["time"]) + info["x_pos"])
+            # reward = reward
+            # if coinStatus != info["coins"]:
+            #     coinStatus = info["coins"]
+            #     reward = reward + 10
+            # if marioStatus != info["status"]:
+            #     marioStatus = info["status"]
+            #     reward = reward + 200
+            # if flagStatus != info["flag_get"]:
+            #     flagStatus = info["flag_get"]
+            #     reward = reward + 200
+            # if lifeStatus != info["life"]:
+            #     lifeStatus = info["life"]
+            #     reward = reward - 20
+            #
+            # if info["x_pos"] < 10:
+            #     info["x_pos"] = 10
+            # if info["time"] < 10:
+            #     info["time"] = 10
+            #
+            # reward = reward + math.log((info["x_pos"] / info["time"]) + info["x_pos"])
 
             # 샘플 <s, a, r, s'>을 리플레이 메모리에 저장 후 학습
             agent.append_sample(history, action, reward, next_history, dead)
