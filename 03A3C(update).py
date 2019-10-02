@@ -14,6 +14,7 @@ import gym
 from nes_py.wrappers import JoypadSpace
 import gym_super_mario_bros
 from gym_super_mario_bros.actions import SIMPLE_MOVEMENT
+from datetime import datetime
 
 # 멀티쓰레딩을 위한 글로벌 변수
 global episode
@@ -39,15 +40,16 @@ class A3CAgent:
         # 쓰레드의 갯수
         self.threads = 8
         #
-        self.load_model = True
+        self.load = False
         self.pre_fix = "./a3c"
+        self.start = datetime.now()
 
         # 정책신경망과 가치신경망을 생성
         self.actor, self.critic = self.build_model()
         # 정책신경망과 가치신경망을 업데이트하는 함수 생성
         self.optimizer = [self.actor_optimizer(), self.critic_optimizer()]
 
-        if self.load_model:
+        if self.load:
             self.load_model(self.pre_fix)
             print("load model!")
 
@@ -81,6 +83,8 @@ class A3CAgent:
             time.sleep(60)
             self.save_model(self.pre_fix)
             print("model saved!")
+            print("time elapsed : {} sec".format((datetime.now() - self.start).seconds))
+            self.start = datetime.now()
             print()
 
     # 정책신경망과 가치신경망을 생성
@@ -90,7 +94,7 @@ class A3CAgent:
         conv = Conv2D(32, (4, 4), strides=(2, 2), activation='relu')(conv)
         conv = Conv2D(16, (2, 2), strides=(1, 1), activation='relu')(conv)
         conv = Flatten()(conv)
-        fc = Dense(128, activation='relu')(conv)
+        fc = Dense(512, activation='relu')(conv)
 
         policy = Dense(self.action_size, activation='softmax')(fc)
         value = Dense(1, activation='linear')(fc)
@@ -219,10 +223,10 @@ class Agent(threading.Thread):
             observe = env.reset()
             next_observe = observe
 
-            # # 0~30 상태동안 정지
-            # for _ in range(random.randint(1, 30)):
-            #     observe = next_observe
-            #     next_observe, _, _, _ = env.step(1)
+            # 0~30 상태동안 정지
+            for _ in range(random.randint(1, 30)):
+                observe = next_observe
+                next_observe, _, _, _ = env.step(1)
 
             state = pre_processing(next_observe, observe)
             history = np.stack((state, state, state, state), axis=2)
@@ -266,28 +270,30 @@ class Agent(threading.Thread):
                 self.avg_p_max += np.amax(self.actor.predict(np.float32(history / 255.)))
 
                 real_reward = reward
-                # if start_life > info['life']:
-                #     dead = True
-                #     start_life = info['life']
-                if coinStatus != info["coins"]:
-                    coinStatus = info["coins"]
-                    reward = reward + 10
-                if marioStatus != info["status"]:
-                    marioStatus = info["status"]
-                    reward = reward + 200
-                if flagStatus != info["flag_get"]:
-                    flagStatus = info["flag_get"]
-                    reward = reward + 200
-                if lifeStatus != info["life"]:
-                    lifeStatus = info["life"]
-                    reward = reward - 200
+                if start_life > info['life']:
+                    dead = True
+                    start_life = info['life']
 
-                if info["x_pos"] < 10:
-                    info["x_pos"] = 10
-                if info["time"] < 10:
-                    info["time"] = 10
-
-                reward = reward + ((info["x_pos"] / info["time"]) + info["x_pos"]) / 100
+                # ###
+                # if coinStatus != info["coins"]:
+                #     coinStatus = info["coins"]
+                #     reward = reward + 10
+                # if marioStatus != info["status"]:
+                #     marioStatus = info["status"]
+                #     reward = reward + 200
+                # if flagStatus != info["flag_get"]:
+                #     flagStatus = info["flag_get"]
+                #     reward = reward + 200
+                # if lifeStatus != info["life"]:
+                #     lifeStatus = info["life"]
+                #     reward = reward - 200
+                #
+                # if info["x_pos"] < 10:
+                #     info["x_pos"] = 10
+                # if info["time"] < 10:
+                #     info["time"] = 10
+                #
+                # reward = reward + ((info["x_pos"] / info["time"]) + info["x_pos"]) / 100
 
                 score += real_reward
                 # reward = np.clip(reward, -1., 1.)
@@ -360,7 +366,7 @@ class Agent(threading.Thread):
         conv = Conv2D(32, (4, 4), strides=(2, 2), activation='relu')(conv)
         conv = Conv2D(16, (2, 2), strides=(1, 1), activation='relu')(conv)
         conv = Flatten()(conv)
-        fc = Dense(128, activation='relu')(conv)
+        fc = Dense(512, activation='relu')(conv)
         policy = Dense(self.action_size, activation='softmax')(fc)
         value = Dense(1, activation='linear')(fc)
 

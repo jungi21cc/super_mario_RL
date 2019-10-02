@@ -67,10 +67,10 @@ class DQNAgent:
             self.model.load_weights("./dqn.h5")
             print("weight load!")
 
-        if os.path.exists("memory.joblib"):
-            if self.load_memory:
-                self.memory = load("./memory.joblib")
-                print("memory load!")
+        # if os.path.exists("memory.joblib"):
+        #     if self.load_memory:
+        #         self.memory = load("./memory.joblib")
+        #         print("memory load!")
             # else:
             #     pass
 

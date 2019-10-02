@@ -33,7 +33,7 @@ class DQNAgent:
         self.avg_q_max, self.avg_loss = 0, 0
 
         if self.load_model:
-            self.model.load_weights("./dqn.h5")
+            self.model.load_weights("./dqn1.h5")
             print("weight load!")
 
     # 상태가 입력, 큐함수가 출력인 인공신경망 생성
@@ -82,6 +82,7 @@ def main():
     print()
 
     for e in range(4):
+        e = e + 1
         done = False
         dead = False
 
