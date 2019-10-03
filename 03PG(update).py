@@ -1,4 +1,5 @@
-import gym
+from keras.optimizers import RMSprop
+from keras import backend as K
 import random
 import numpy as np
 from skimage.color import rgb2gray
@@ -9,11 +10,13 @@ from keras.layers.convolutional import Conv2D
 from nes_py.wrappers import JoypadSpace
 import gym_super_mario_bros
 from gym_super_mario_bros.actions import SIMPLE_MOVEMENT
+from tqdm import tqdm
 
 global episode
 episode = 0
 EPISODES = 8000000
 # env_name = "BreakoutDeterministic-v4"
+
 
 class A2C:
     def __init__(self, action_size):
@@ -25,6 +28,9 @@ class A2C:
         self.no_op_steps = 30
 
         self.actor, self.critic = self.build_model()
+        # self.actor_optimize = self.actor_optimizer()
+        # self.critic_optimize = self.critic_optimizer()
+
         self.load = False
         self.pre_fix = "a2c"
 
@@ -86,10 +92,11 @@ class A2C:
 
    # 정책신경망과 가치신경망을 업데이트
     def train_model(self):
-        discounted_prediction = self.discounted_prediction(self.rewards, done)
+        print("discount prediction!")
+        # discounted_prediction = self.discounted_prediction(self.rewards, done)
 
         states = np.zeros((len(self.states), 180, 192, 4))
-        for i in range(len(self.states)):
+        for i in tqdm(range(len(self.states))):
             states[i] = self.states[i]
 
         states = np.float32(states / 255.)
@@ -97,16 +104,57 @@ class A2C:
         values = self.critic.predict(states)
         values = np.reshape(values, len(values))
 
-        advantages = discounted_prediction - values
+        # advantages = discounted_prediction - values
 
-        self.optimizer[0]([states, self.actions, advantages])
-        self.optimizer[1]([states, discounted_prediction])
+        print("actor optimizer!")
+        self.actor_optimizer()
+        print("critic optimizer!")
+        self.critic_optimizer()
+        print("optimize done!")
         self.states, self.actions, self.rewards = [], [], []
 
     def save_model(self):
         self.actor.save_weights(self.pre_fix + "_actor.h5")
         self.critic.save_weights(self.pre_fix + "_critic.h5")
         print("model saved!")
+
+    # 정책신경망을 업데이트하는 함수
+    def actor_optimizer(self):
+        action = K.placeholder(shape=[None, self.action_size])
+        advantages = K.placeholder(shape=[None, ])
+
+        policy = self.actor.output
+
+        # 정책 크로스 엔트로피 오류함수
+        action_prob = K.sum(action * policy, axis=1)
+        cross_entropy = K.log(action_prob + 1e-10) * advantages
+        cross_entropy = -K.sum(cross_entropy)
+
+        # 탐색을 지속적으로 하기 위한 엔트로피 오류
+        entropy = K.sum(policy * K.log(policy + 1e-10), axis=1)
+        entropy = K.sum(entropy)
+
+        # 두 오류함수를 더해 최종 오류함수를 만듬
+        loss = cross_entropy + 0.01 * entropy
+
+        optimizer = RMSprop()
+        updates = optimizer.get_updates(self.actor.trainable_weights, [], loss)
+        train = K.function([self.actor.input, action, advantages], [loss], updates=updates)
+        return train
+
+    # 가치신경망을 업데이트하는 함수
+    def critic_optimizer(self):
+        discounted_prediction = K.placeholder(shape=(None,))
+
+        value = self.critic.output
+
+        # [반환값 - 가치]의 제곱을 오류함수로 함
+        loss = K.mean(K.square(discounted_prediction - value))
+
+        optimizer = RMSprop()
+        updates = optimizer.get_updates(self.critic.trainable_weights, [], loss)
+        train = K.function([self.critic.input, discounted_prediction], [loss], updates=updates)
+        return train
 
 
 def pre_processing(next_observe, observe):
