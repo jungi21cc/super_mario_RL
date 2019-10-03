@@ -192,7 +192,7 @@ if __name__ == "__main__":
         history = np.reshape([history], (1, 180, 192, 4))
 
         while not done:
-            env.render()
+            # env.render()
             step += 1
             observe = next_observe
 

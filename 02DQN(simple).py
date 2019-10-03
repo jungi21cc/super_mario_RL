@@ -18,7 +18,7 @@ class DQNAgent:
         self.load_model = True
         self.load_memory = False
         # 상태와 행동의 크기 정의
-        self.state_size = (180, 192, 4)
+        self.state_size = (240, 256, 4)
         self.action_size = action_size
         # DQN 하이퍼파라미터
         self.epsilon = 0.115
@@ -33,7 +33,7 @@ class DQNAgent:
         self.avg_q_max, self.avg_loss = 0, 0
 
         if self.load_model:
-            self.model.load_weights("./dqn2.h5")
+            self.model.load_weights("./dqn3.h5")
             print("weight load!")
 
     # 상태가 입력, 큐함수가 출력인 인공신경망 생성
@@ -42,9 +42,9 @@ class DQNAgent:
         model.add(Conv2D(64, (8, 8), strides=(4, 4), activation='relu', input_shape=self.state_size))
         model.add(Conv2D(32, (4, 4), strides=(2, 2), activation='relu'))
         model.add(Conv2D(16, (2, 2), strides=(1, 1), activation='relu'))
-        # model.add(Conv2D(64, (2, 2), strides=(1, 1), activation='relu'))
         model.add(Flatten())
         model.add(Dense(512, activation='relu'))
+        model.add(Dense(256, activation='relu'))
         model.add(Dense(self.action_size))
         model.summary()
         return model
@@ -60,7 +60,7 @@ class DQNAgent:
 
     # 학습속도를 높이기 위해 흑백화면으로 전처리
     def pre_processing(self, observe):
-        processed_observe = np.uint8(resize(rgb2gray(observe), (180, 192), mode='constant') * 255)
+        processed_observe = np.uint8(resize(rgb2gray(observe), (240, 256), mode='constant') * 255)
         return processed_observe
 
 
@@ -94,7 +94,7 @@ def main():
 
         state = agent.pre_processing(observe)
         history = np.stack((state, state, state, state), axis=2)
-        history = np.reshape([history], (1, 180, 192, 4))
+        history = np.reshape([history], (1, 240, 256, 4))
 
         count_epsilon = 0
         count_greedy = 0
@@ -116,7 +116,7 @@ def main():
             # print(info)
             # 각 타임스텝마다 상태 전처리
             next_state = agent.pre_processing(observe)
-            next_state = np.reshape([next_state], (1, 180, 192, 1))
+            next_state = np.reshape([next_state], (1, 240, 256, 1))
             next_history = np.append(next_state, history[:, :, :, :3], axis=3)
             agent.avg_q_max += np.amax(agent.model.predict(np.float32(history / 255.))[0])
 
