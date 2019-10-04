@@ -261,12 +261,13 @@ if __name__ == "__main__":
             # if done, plot the score over episodes
             if done:
                 # episode += 1
-                print("episode:", e, "  score:", score, "  step:", step)
+                ep_res = "episode: {},  score: {}, step: {}".format(e, score, step)
+                # print("episode:", e, "  score:", score, "  step:", step)
                 step = 0
                 agent.train_model()
                 agent.save_model()
                 print("time elapsed : {} sec".format((datetime.now() - global_start).seconds))
                 global_start = datetime.now()
 
-                slack_msg("episode:", e, "  score:", score, "  step:", step)
+                slack_msg(ep_res)
 

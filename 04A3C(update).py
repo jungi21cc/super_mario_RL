@@ -331,10 +331,11 @@ class Agent(threading.Thread):
                 if done:
                     # 각 에피소드 당 학습 정보를 기록
                     episode += 1
-                    print("episode:", episode, "  score:", score, "  step:", step)
+                    ep_res = "episode: {},  score: {}, step: {}".format(episode, score, step)
+                    print(ep_res)
 
                     if episode % 20 == 0:
-                        slack_msg("episode:", episode, "  score:", score, "  step:", step)
+                        slack_msg(ep_res)
 
                     # stats = [score, self.avg_p_max / float(step), step]
                     # for i in range(len(stats)):
