@@ -16,6 +16,8 @@ import gym_super_mario_bros
 from gym_super_mario_bros.actions import SIMPLE_MOVEMENT
 from datetime import datetime
 
+import gc
+
 # 멀티쓰레딩을 위한 글로벌 변수
 global episode
 episode = 0
@@ -230,6 +232,8 @@ class Agent(threading.Thread):
 
         step = 0
 
+        gc.collect()
+
         while episode < EPISODES:
             done = False
             dead = False
@@ -315,6 +319,8 @@ class Agent(threading.Thread):
 
                 # 샘플을 저장
                 self.append_sample(history, action, reward)
+
+                gc.collect()
 
                 if dead:
                     history = np.stack((next_state, next_state, next_state, next_state), axis=2)

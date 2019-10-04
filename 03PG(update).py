@@ -17,6 +17,8 @@ from datetime import datetime
 from slacker import Slacker
 from config import token
 
+import gc
+
 global episode
 episode = 0
 EPISODES = 8000000
@@ -192,6 +194,8 @@ if __name__ == "__main__":
     global_start = datetime.now()
     local_start = datetime.now()
 
+    gc.collect()
+
     for e in range(10):
         e = e + 1
         print("EPISODE START {}".format(e))
@@ -257,6 +261,8 @@ if __name__ == "__main__":
             elif step % 1000 == 0:
                 print("local step : {}, time : {} sec".format(step, (datetime.now() - local_start).seconds))
                 local_start = datetime.now()
+
+            gc.collect()
 
             # if done, plot the score over episodes
             if done:
