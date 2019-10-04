@@ -48,7 +48,7 @@ class A2C:
         # self.actor_optimize = self.actor_optimizer()
         # self.critic_optimize = self.critic_optimizer()
 
-        self.load_model = False
+        self.load_model = True
         self.pre_fix = "a2c"
 
         if self.load_model:
@@ -123,6 +123,8 @@ class A2C:
         # values = np.reshape(values, len(values))
 
         # advantages = discounted_prediction - values
+
+        gc.collect()
 
         # print("actor optimizer!")
         self.actor_optimizer()
@@ -264,16 +266,16 @@ if __name__ == "__main__":
 
             gc.collect()
 
-            # if done, plot the score over episodes
-            if done:
-                # episode += 1
-                ep_res = "episode: {},  score: {}, step: {}".format(e, score, step)
-                # print("episode:", e, "  score:", score, "  step:", step)
-                step = 0
-                agent.train_model()
-                agent.save_model()
-                print("time elapsed : {} sec".format((datetime.now() - global_start).seconds))
-                global_start = datetime.now()
+        # if done, plot the score over episodes
+        if done:
+            # episode += 1
+            ep_res = "episode: {},  score: {}, step: {}".format(e, score, step)
+            # print("episode:", e, "  score:", score, "  step:", step)
+            step = 0
+            agent.train_model()
+            agent.save_model()
+            print("time elapsed : {} sec".format((datetime.now() - global_start).seconds))
+            global_start = datetime.now()
 
-                slack_msg(ep_res)
+            slack_msg(ep_res)
 

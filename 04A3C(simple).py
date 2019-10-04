@@ -44,12 +44,12 @@ class TestAgent:
 
         return actor, critic
 
+    # 정책신경망의 출력을 받아서 확률적으로 행동을 선택
     def get_action(self, history):
         history = np.float32(history / 255.)
         policy = self.actor.predict(history)[0]
-
-        action_index = np.argmax(policy)
-        return action_index
+        action_index = np.random.choice(self.action_size, 1, p=policy)[0]
+        return action_index, policy
 
     def load_model(self, name):
         self.actor.load_weights(name)
@@ -91,7 +91,7 @@ if __name__ == "__main__":
             step += 1
             observe = next_observe
 
-            action = agent.get_action(history)
+            action, policy = agent.get_action(history)
 
             # if action == 1:
             #     fake_action = 2

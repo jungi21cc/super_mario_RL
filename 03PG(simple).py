@@ -140,7 +140,7 @@ if __name__ == "__main__":
 
         state = pre_processing(next_observe, observe)
         history = np.stack((state, state, state, state), axis=2)
-        history = np.reshape([history], (1, 180, 192, 4))
+        history = np.reshape([history], (1, 240, 256, 4))
 
         while not done:
             env.render()
