@@ -11,6 +11,7 @@ from nes_py.wrappers import JoypadSpace
 import gym_super_mario_bros
 from gym_super_mario_bros.actions import SIMPLE_MOVEMENT
 from tqdm import tqdm
+from datetime import datetime
 
 global episode
 episode = 0
@@ -20,21 +21,21 @@ EPISODES = 8000000
 
 class A2C:
     def __init__(self, action_size):
-        self.state_size = (180, 192, 4)
+        self.state_size = (240, 256, 4)
         self.action_size = action_size
         self.states, self.actions, self.rewards = [], [], []
 
-        self.discount_factor = 0.99
+        self.discount_factor = 0.95
         self.no_op_steps = 30
 
         self.actor, self.critic = self.build_model()
         # self.actor_optimize = self.actor_optimizer()
         # self.critic_optimize = self.critic_optimizer()
 
-        self.load = False
+        self.load_model = False
         self.pre_fix = "a2c"
 
-        if self.load:
+        if self.load_model:
             self.actor.load_weights("./a2c_actor.h5")
             self.critic.load_weights("./a2c_critic.h5")
             print("weight load!")
@@ -46,6 +47,7 @@ class A2C:
         conv = Conv2D(16, (2, 2), strides=(1, 1), activation='relu')(conv)
         conv = Flatten()(conv)
         fc = Dense(128, activation='relu')(conv)
+        fc = Dense(64, activation='relu')(fc)
         policy = Dense(self.action_size, activation='softmax')(fc)
         value = Dense(1, activation='linear')(fc)
 
@@ -92,10 +94,10 @@ class A2C:
 
    # 정책신경망과 가치신경망을 업데이트
     def train_model(self):
-        print("discount prediction!")
+        # print("discount prediction!")
         # discounted_prediction = self.discounted_prediction(self.rewards, done)
 
-        states = np.zeros((len(self.states), 180, 192, 4))
+        states = np.zeros((len(self.states), 240, 256, 4))
         for i in tqdm(range(len(self.states))):
             states[i] = self.states[i]
 
@@ -106,11 +108,11 @@ class A2C:
 
         # advantages = discounted_prediction - values
 
-        print("actor optimizer!")
+        # print("actor optimizer!")
         self.actor_optimizer()
-        print("critic optimizer!")
+        # print("critic optimizer!")
         self.critic_optimizer()
-        print("optimize done!")
+        # print("optimize done!")
         self.states, self.actions, self.rewards = [], [], []
 
     def save_model(self):
@@ -160,7 +162,7 @@ class A2C:
 def pre_processing(next_observe, observe):
     processed_observe = np.maximum(next_observe, observe)
     processed_observe = np.uint8(
-        resize(rgb2gray(processed_observe), (180, 192), mode='constant') * 255)
+        resize(rgb2gray(processed_observe), (240, 256), mode='constant') * 255)
     return processed_observe
 
 
@@ -172,6 +174,9 @@ if __name__ == "__main__":
     # agent.load_model("a3c_actor.h5")
 
     step = 0
+
+    global_start = datetime.now()
+    local_start = datetime.now()
 
     for e in range(10):
         e = e + 1
@@ -189,7 +194,7 @@ if __name__ == "__main__":
 
         state = pre_processing(next_observe, observe)
         history = np.stack((state, state, state, state), axis=2)
-        history = np.reshape([history], (1, 180, 192, 4))
+        history = np.reshape([history], (1, 240, 256, 4))
 
         while not done:
             # env.render()
@@ -212,7 +217,7 @@ if __name__ == "__main__":
             next_observe, reward, done, info = env.step(action)
 
             next_state = pre_processing(next_observe, observe)
-            next_state = np.reshape([next_state], (1, 180, 192, 1))
+            next_state = np.reshape([next_state], (1, 240, 256, 1))
             next_history = np.append(next_state, history[:, :, :, :3], axis=3)
 
             if start_life > info['life']:
@@ -226,13 +231,18 @@ if __name__ == "__main__":
 
             if dead:
                 history = np.stack((next_state, next_state, next_state, next_state), axis=2)
-                history = np.reshape([history], (1, 180, 192, 4))
+                history = np.reshape([history], (1, 240, 256, 4))
             else:
                 history = next_history
 
             if step % 100:
                 agent.update_model()
                 # print("soft update!")
+            if step == 0:
+                pass
+            elif step % 1000 == 0:
+                print("local step : {}, time : {} sec".format(step, (datetime.now() - local_start).seconds))
+                local_start = datetime.now()
 
             # if done, plot the score over episodes
             if done:
@@ -240,4 +250,6 @@ if __name__ == "__main__":
                 print("episode:", e, "  score:", score, "  step:", step)
                 step = 0
                 agent.train_model()
+                print("time elapsed : {} sec".format((datetime.now() - global_start).seconds))
+                global_start = datetime.now()
 

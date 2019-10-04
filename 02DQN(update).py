@@ -18,6 +18,7 @@ from joblib import dump, load
 import os.path
 import os
 import math
+import gc
 
 ### slcak
 from slacker import Slacker
@@ -53,7 +54,7 @@ class DQNAgent:
         self.update_target_rate = 100
         self.discount_factor = 0.95
         # 리플레이 메모리, 최대 크기 400000
-        self.memory = deque(maxlen=200000)
+        self.memory = deque(maxlen=100000)
         self.no_op_steps = 30
         # 모델과 타겟모델을 생성하고 타겟모델 초기화
         self.model = self.build_model()
@@ -174,6 +175,7 @@ def main():
     print("RL environment initialized")
     print("=" * 100)
     print()
+    gc.collec()
 
     for e in range(30):
         e = e + 1
@@ -300,6 +302,8 @@ def main():
             # dump(agent.memory, "memory.joblib")
             print("model saved!")
             print()
+
+        gc.collec()
 
 
 if __name__ == "__main__":
