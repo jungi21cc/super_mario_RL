@@ -113,14 +113,14 @@ class A2C:
         # print("discount prediction!")
         # discounted_prediction = self.discounted_prediction(self.rewards, done)
 
-        states = np.zeros((len(self.states), 240, 256, 4))
-        for i in tqdm(range(len(self.states))):
-            states[i] = self.states[i]
-
-        states = np.float32(states / 255.)
-
-        values = self.critic.predict(states)
-        values = np.reshape(values, len(values))
+        # states = np.zeros((len(self.states), 240, 256, 4))
+        # for i in tqdm(range(len(self.states))):
+        #     states[i] = self.states[i]
+        #
+        # states = np.float32(states / 255.)
+        #
+        # values = self.critic.predict(states)
+        # values = np.reshape(values, len(values))
 
         # advantages = discounted_prediction - values
 
