@@ -21,9 +21,20 @@ global episode
 episode = 0
 EPISODES = 8000000
 
+### slcak
+from slacker import Slacker
+from config import token
 
-# 환경 생성
-# env_name = "BreakoutDeterministic-v4"
+
+def slack_msg(msg):
+    slack = Slacker(token)
+    attachments_dict = dict()
+    attachments_dict["pretext"] = "{}".format(datetime.now())
+    attachments_dict["title"] = "=====A3C result====="
+    attachments_dict["text"] = "```{}```".format(msg)
+    attachments_dict["mrkdwn_in"] = ["text", "pretext"]  # 마크다운을 적용시킬 인자들을 선택합니다.
+    attachments = [attachments_dict]
+    slack.chat.post_message(channel="#jarvis", text=None, attachments=attachments)
 
 
 # 브레이크아웃에서의 A3CAgent 클래스(글로벌신경망)
@@ -82,7 +93,7 @@ class A3CAgent:
 
         # 10분(600초)에 한번씩 모델을 저장
         while True:
-            time.sleep(60)
+            time.sleep(60 * 2)
             self.save_model(self.pre_fix)
             print("model saved!")
             print("count : {} , time elapsed : {} sec".format(self.count, (datetime.now() - self.start).seconds))
@@ -322,6 +333,9 @@ class Agent(threading.Thread):
                     episode += 1
                     print("episode:", episode, "  score:", score, "  step:", step)
 
+                    if episode % 20 == 0:
+                        slack_msg("episode:", episode, "  score:", score, "  step:", step)
+
                     # stats = [score, self.avg_p_max / float(step), step]
                     # for i in range(len(stats)):
                     #     self.sess.run(self.update_ops[i], feed_dict={ self.summary_placeholders[i]: float(stats[i]) })
@@ -370,8 +384,8 @@ class Agent(threading.Thread):
         conv = Conv2D(32, (4, 4), strides=(2, 2), activation='relu')(conv)
         conv = Conv2D(16, (2, 2), strides=(1, 1), activation='relu')(conv)
         conv = Flatten()(conv)
-        fc = Dense(512, activation='relu')(conv)
-        fc = Dense(256, activation='relu')(fc)
+        fc = Dense(256, activation='relu')(conv)
+        fc = Dense(128, activation='relu')(fc)
         policy = Dense(self.action_size, activation='softmax')(fc)
         value = Dense(1, activation='linear')(fc)
 
@@ -413,7 +427,7 @@ class Agent(threading.Thread):
 # 학습속도를 높이기 위해 흑백화면으로 전처리
 def pre_processing(next_observe, observe):
     processed_observe = np.maximum(next_observe, observe)
-    processed_observe = np.uint8(resize(rgb2gray(processed_observe), (180, 192), mode='constant') * 255)
+    processed_observe = np.uint8(resize(rgb2gray(processed_observe), (240, 256), mode='constant') * 255)
     return processed_observe
 
 

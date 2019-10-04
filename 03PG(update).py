@@ -21,6 +21,7 @@ global episode
 episode = 0
 EPISODES = 8000000
 
+
 def slack_msg(msg):
     slack = Slacker(token)
     attachments_dict = dict()
@@ -30,7 +31,6 @@ def slack_msg(msg):
     attachments_dict["mrkdwn_in"] = ["text", "pretext"]  # 마크다운을 적용시킬 인자들을 선택합니다.
     attachments = [attachments_dict]
     slack.chat.post_message(channel="#jarvis", text=None, attachments=attachments)
-
 
 
 class A2C:
