@@ -8,13 +8,14 @@ def main():
     env = gym_super_mario_bros.make('SuperMarioBros-v0')
     env = JoypadSpace(env, SIMPLE_MOVEMENT)
 
-    done = True
-    for e in range(5000):
-        if done:
-            state = env.reset()
-        state, reward, done, info = env.step(env.action_space.sample())
-        env.render()
-        print(state.shape)
+    done = False
+
+    for e in range(100):
+        state = env.reset()
+
+        while not done:
+            env.render()
+            state, reward, done, info = env.step(env.action_space.sample())
 
     env.close()
 

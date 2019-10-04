@@ -30,7 +30,7 @@ EPISODES = 8000000
 class A3CAgent:
     def __init__(self, action_size):
         # 상태크기와 행동크기를 갖고옴
-        self.state_size = (180, 192, 4)
+        self.state_size = (240, 256, 4)
         self.action_size = action_size
         # A3C 하이퍼파라미터
         self.discount_factor = 0.95
@@ -40,7 +40,7 @@ class A3CAgent:
         # 쓰레드의 갯수
         self.threads = 8
         #
-        self.load = True
+        self.load = False
         self.pre_fix = "./a3c"
         self.start = datetime.now()
 
@@ -97,7 +97,8 @@ class A3CAgent:
         conv = Conv2D(32, (4, 4), strides=(2, 2), activation='relu')(conv)
         conv = Conv2D(16, (2, 2), strides=(1, 1), activation='relu')(conv)
         conv = Flatten()(conv)
-        fc = Dense(512, activation='relu')(conv)
+        fc = Dense(256, activation='relu')(conv)
+        fc = Dense(128, activation='relu')(fc)
 
         policy = Dense(self.action_size, activation='softmax')(fc)
         value = Dense(1, activation='linear')(fc)
@@ -233,7 +234,7 @@ class Agent(threading.Thread):
 
             state = pre_processing(next_observe, observe)
             history = np.stack((state, state, state, state), axis=2)
-            history = np.reshape([history], (1, 180, 192, 4))
+            history = np.reshape([history], (1, 240, 256, 4))
 
             coinStatus = 0
             marioStatus = "small"
@@ -266,7 +267,7 @@ class Agent(threading.Thread):
 
                 # 각 타임스텝마다 상태 전처리
                 next_state = pre_processing(next_observe, observe)
-                next_state = np.reshape([next_state], (1, 180, 192, 1))
+                next_state = np.reshape([next_state], (1, 240, 256, 1))
                 next_history = np.append(next_state, history[:, :, :, :3], axis=3)
 
                 # 정책의 최대값
@@ -306,7 +307,7 @@ class Agent(threading.Thread):
 
                 if dead:
                     history = np.stack((next_state, next_state, next_state, next_state), axis=2)
-                    history = np.reshape([history], (1, 180, 192, 4))
+                    history = np.reshape([history], (1, 240, 256, 4))
                 else:
                     history = next_history
 
@@ -347,7 +348,7 @@ class Agent(threading.Thread):
     def train_model(self, done):
         discounted_prediction = self.discounted_prediction(self.rewards, done)
 
-        states = np.zeros((len(self.states), 180, 192, 4))
+        states = np.zeros((len(self.states), 240, 256, 4))
         for i in range(len(self.states)):
             states[i] = self.states[i]
 
@@ -370,6 +371,7 @@ class Agent(threading.Thread):
         conv = Conv2D(16, (2, 2), strides=(1, 1), activation='relu')(conv)
         conv = Flatten()(conv)
         fc = Dense(512, activation='relu')(conv)
+        fc = Dense(256, activation='relu')(fc)
         policy = Dense(self.action_size, activation='softmax')(fc)
         value = Dense(1, activation='linear')(fc)
 

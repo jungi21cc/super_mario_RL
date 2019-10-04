@@ -13,10 +13,24 @@ from gym_super_mario_bros.actions import SIMPLE_MOVEMENT
 from tqdm import tqdm
 from datetime import datetime
 
+### slcak
+from slacker import Slacker
+from config import token
+
 global episode
 episode = 0
 EPISODES = 8000000
-# env_name = "BreakoutDeterministic-v4"
+
+def slack_msg(msg):
+    slack = Slacker(token)
+    attachments_dict = dict()
+    attachments_dict["pretext"] = "{}".format(datetime.now())
+    attachments_dict["title"] = "=====A2C result====="
+    attachments_dict["text"] = "```{}```".format(msg)
+    attachments_dict["mrkdwn_in"] = ["text", "pretext"]  # 마크다운을 적용시킬 인자들을 선택합니다.
+    attachments = [attachments_dict]
+    slack.chat.post_message(channel="#jarvis", text=None, attachments=attachments)
+
 
 
 class A2C:
@@ -246,10 +260,13 @@ if __name__ == "__main__":
 
             # if done, plot the score over episodes
             if done:
-                episode += 1
+                # episode += 1
                 print("episode:", e, "  score:", score, "  step:", step)
                 step = 0
                 agent.train_model()
+                agent.save_model()
                 print("time elapsed : {} sec".format((datetime.now() - global_start).seconds))
                 global_start = datetime.now()
+
+                slack_msg("episode:", e, "  score:", score, "  step:", step)
 

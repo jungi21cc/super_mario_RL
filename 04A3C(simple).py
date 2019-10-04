@@ -17,7 +17,7 @@ EPISODES = 8000000
 
 class TestAgent:
     def __init__(self, action_size):
-        self.state_size = (180, 192, 4)
+        self.state_size = (240, 256, 4)
         self.action_size = action_size
 
         self.discount_factor = 0.99
@@ -31,6 +31,7 @@ class TestAgent:
         conv = Conv2D(32, (4, 4), strides=(2, 2), activation='relu')(conv)
         conv = Conv2D(16, (2, 2), strides=(1, 1), activation='relu')(conv)
         conv = Flatten()(conv)
+        fc = Dense(256, activation='relu')(conv)
         fc = Dense(128, activation='relu')(conv)
         policy = Dense(self.action_size, activation='softmax')(fc)
         value = Dense(1, activation='linear')(fc)
