@@ -39,7 +39,7 @@ def slack_msg(msg):
 class DQNAgent:
     def __init__(self, action_size=7):
         # self.render = False
-        self.load_model = False
+        self.load_model = True
         self.load_memory = False
         # 상태와 행동의 크기 정의
         self.state_size = (240, 256, 4)
@@ -175,9 +175,9 @@ def main():
     print("RL environment initialized")
     print("=" * 100)
     print()
-    gc.collec()
+    gc.collect()
 
-    for e in range(30):
+    for e in range(20):
         e = e + 1
         done = False
         dead = False
@@ -303,7 +303,7 @@ def main():
             print("model saved!")
             print()
 
-        gc.collec()
+        gc.collect()
 
 
 if __name__ == "__main__":
