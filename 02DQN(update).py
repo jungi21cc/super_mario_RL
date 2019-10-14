@@ -48,11 +48,11 @@ class DQNAgent:
         self.epsilon = 0.115
         # self.epsilon_min = 0.1
         # # self.exploration_steps = 1000.
-        self.epsilon_decay_step = 0.002
+        self.epsilon_decay_step = 0.0005
         self.batch_size = 32
         self.train_start = 50
         self.update_target_rate = 100
-        self.discount_factor = 0.95
+        self.discount_factor = 0.925
         # 리플레이 메모리, 최대 크기 400000
         self.memory = deque(maxlen=100000)
         self.no_op_steps = 30
@@ -177,7 +177,7 @@ def main():
     print()
     gc.collect()
 
-    for e in range(20):
+    for e in range(1000):
         e = e + 1
         done = False
         dead = False

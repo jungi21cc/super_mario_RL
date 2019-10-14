@@ -92,7 +92,9 @@ if __name__ == "__main__":
             observe = next_observe
 
             action, policy = agent.get_action(history)
-
+            # print(action)
+            # print(np.argmax(policy))
+            # action = np.argmax(policy)
             # if action == 1:
             #     fake_action = 2
             # elif action == 2:
